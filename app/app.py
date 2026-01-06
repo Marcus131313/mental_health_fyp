@@ -14,19 +14,18 @@ DATA_PATH = BASE_DIR / "data" / "mental_health_clean.csv"
 
 @st.cache_resource
 def train_model(df: pd.DataFrame):
-    """
-    Train a Logistic Regression pipeline on the cleaned mental health dataset.
-    Cached so it only trains once per session on Streamlit Cloud.
-    """
     from sklearn.model_selection import train_test_split
     from sklearn.compose import ColumnTransformer
     from sklearn.preprocessing import OneHotEncoder, StandardScaler
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import Pipeline
 
-    # Separate features and target
-    X = df.drop(columns=["Risk_Level"])
-    y = df["Risk_Level"]
+    # 🔹 1) Clean missing values
+    df_clean = df.dropna().reset_index(drop=True)
+
+    # 🔹 2) Separate features and target
+    X = df_clean.drop(columns=["Risk_Level"])
+    y = df_clean["Risk_Level"]
 
     numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
     categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
@@ -47,7 +46,6 @@ def train_model(df: pd.DataFrame):
         ]
     )
 
-    # Train/test split (for training only – we don’t use X_test here)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
