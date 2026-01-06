@@ -13,8 +13,46 @@ DATA_PATH = BASE_DIR / "data" / "mental_health_clean.csv"
 
 
 @st.cache_resource
-def load_model():
-    model = joblib.load(MODEL_PATH)
+def train_model(df: pd.DataFrame):
+    """
+    Train a Logistic Regression pipeline on the cleaned mental health dataset.
+    Cached so it only trains once per session on Streamlit Cloud.
+    """
+    from sklearn.model_selection import train_test_split
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+
+    # Separate features and target
+    X = df.drop(columns=["Risk_Level"])
+    y = df["Risk_Level"]
+
+    numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", StandardScaler(), numeric_cols),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_cols),
+        ]
+    )
+
+    clf = LogisticRegression(max_iter=1000)
+
+    model = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("classifier", clf),
+        ]
+    )
+
+    # Train/test split (for training only – we don’t use X_test here)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+
+    model.fit(X_train, y_train)
     return model
 
 
@@ -37,9 +75,9 @@ It is only for academic and decision-support purposes.
 """
     )
 
-    # Load model and data
-    model = load_model()
+    # Load data then train model on the server
     df = load_data()
+    model = train_model(df)
 
     # -----------------------------
     # Overview section
